@@ -9,10 +9,10 @@
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
-        <!--Todoey-->
+        <!--To do List View Controller-->
         <scene sceneID="9Kh-uh-mdw">
             <objects>
-                <tableViewController id="rfD-iW-ktb" customClass="ToDoListViewController" customModule="Todoey" customModuleProvider="target" sceneMemberID="viewController">
+                <tableViewController id="rfD-iW-ktb" userLabel="To do List View Controller" customClass="TodoListViewController" customModule="Todoey" customModuleProvider="target" sceneMemberID="viewController">
                     <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" id="pBd-ka-Jnc">
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -32,7 +32,14 @@
                             <outlet property="delegate" destination="rfD-iW-ktb" id="gtG-db-muA"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="Todoey" id="Jqu-Q6-uSy"/>
+                    <navigationItem key="navigationItem" title="Todoey" id="Jqu-Q6-uSy">
+                        <barButtonItem key="rightBarButtonItem" systemItem="add" id="aLD-8r-Rhv">
+                            <color key="tintColor" red="0.99999600649999998" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                            <connections>
+                                <action selector="addButtonPressed:" destination="rfD-iW-ktb" id="blF-qu-Ekf"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="ML7-Jj-PrR" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
