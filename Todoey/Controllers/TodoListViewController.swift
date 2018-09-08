@@ -13,28 +13,33 @@ class TodoListViewController: UITableViewController {
     //var itemArray = ["Find Mike", "Buy Eggos", "Destroy Demogorgon"]
     var itemArray = [Item]()
     
-    let defaults = UserDefaults.standard //UserDefaults: an interface to the user's defaults database, where you store key-value pairs persistently across launches of the app. UserDefaults should only be used to save/persist small bits of data (like a volumne value or boolean or player name, should not use arrays often or heavily) (should not be used as a database). Just to get one value from the Defaults, the iPhone/Device has to load ALL of the defaults, instead of just that one value. UserDefaults is a singleton
+    //let defaults = UserDefaults.standard //UserDefaults: an interface to the user's defaults database, where you store key-value pairs persistently across launches of the app. UserDefaults should only be used to save/persist small bits of data (like a volumne value or boolean or player name, should not use arrays often or heavily) (should not be used as a database). Just to get one value from the Defaults, the iPhone/Device has to load ALL of the defaults, instead of just that one value. UserDefaults is a singleton
+    
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist") //the user domain mask is the user's home directory -> the place where we are to save their personal items associated with this current app. We grab the first item because this is an array.
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // Do any additional setup after loading the view, typically from a nib.
         
-        let newItem = Item()
-        newItem.title = "Find Mike"
-        itemArray.append(newItem)
+        //hardcoded item initialization for when we were testing:
+//        let newItem = Item()
+//        newItem.title = "Find Mike"
+//        itemArray.append(newItem)
+//
+//        let newItem2 = Item()
+//        newItem2.title = "Buy Eggos"
+//        itemArray.append(newItem)
+//
+//        let newItem3 = Item()
+//        newItem3.title = "Destroy Demogorgon"
+//        itemArray.append(newItem)
         
-        let newItem2 = Item()
-        newItem2.title = "Buy Eggos"
-        itemArray.append(newItem)
+//        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
+//            itemArray = items
+//        }
         
-        let newItem3 = Item()
-        newItem3.title = "Destroy Demogorgon"
-        itemArray.append(newItem)
-        
-        if let items = defaults.array(forKey: "TodoListArray") as? [Item] {
-            itemArray = items
-        }
+        loadItems()
         
     }
 
@@ -81,7 +86,7 @@ class TodoListViewController: UITableViewController {
 //            itemArray[indexPath.row].done = false
 //        }
         
-        tableView.reloadData()
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true) //makes the row white again, instead of keeping it grey (which indicates it is selected)
     }
@@ -106,9 +111,9 @@ class TodoListViewController: UITableViewController {
             //could also do this:
             //itemArray.append(textField.text ?? "New Item") //this means that if the textField.text is nil, append "New Item"
             
-            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            //self.defaults.set(self.itemArray, forKey: "TodoListArray") //user defaults does not accept custom objects
             
-            self.tableView.reloadData()
+            self.saveItems()
             
         }
         
@@ -123,6 +128,33 @@ class TodoListViewController: UITableViewController {
         
         present(alert, animated: true, completion: nil)
         
+    }
+    
+    //MARK - Model Manipulation Methods
+    
+    func saveItems() {
+        let encoder = PropertyListEncoder() //this encodes our data into a property list using NSCoder
+        
+        do {
+            let data = try encoder.encode(itemArray) //encodes data into a plist
+            try data.write(to: dataFilePath!) //write data to data file path
+        } catch {
+            print("Error encoding item array, \(error)")
+        }
+        
+        self.tableView.reloadData()
+    }
+    
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) { //try? will turn the result of the Data() method into an optional. We use optional binding to unwrap that safely
+            let decoder = PropertyListDecoder() //this decodes our data from the property list using NSCoder
+            do {
+                itemArray = try decoder.decode([Item].self, from: data) //Decodes data into an array of Items. [Item] is the type of data that is being decoded
+            } catch {
+                print("Error decoding item array, \(error)")
+            }
+            
+        }
     }
     
 }
