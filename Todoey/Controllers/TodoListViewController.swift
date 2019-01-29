@@ -7,12 +7,18 @@
 //
 
 import UIKit
-import CoreData
+//import CoreData
+import RealmSwift
 
 class TodoListViewController: UITableViewController { //adding all of these protocols/delegates can get crowded and confusing, so you can create a new class that acts as an extension to the TodoListViewController class below this class, and have that extension act as the delegate for the specific need (ie search bar or image picker, etc.) (can split up the functionality of the view controller so its more organized/modularized)
     
     //var itemArray = ["Find Mike", "Buy Eggos", "Destroy Demogorgon"]
-    var itemArray = [Item]()
+    
+    //var itemArray = [Item]() //having itemArray as this type of variable is for Core Data
+    
+    var todoItems: Results<Item>? //having itemArray as this type of variable is for Realm (itemArray was renamed to todoItems)
+    
+    let realm = try! Realm()
     
     var selectedCategory : Category? {
         didSet{ //everything between these curly braces is going to happen as soon as selectedCategory gets set with a value
@@ -21,7 +27,8 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         }
     }
     
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext //gets access to the AppDelegate as a singleton object. Then grabs the persistent container of the AppDelegate (the persistent container is the persistent data storage (Core Data database). Then we grab the Context of the persistent container (what the app interacts with in order to interact with the persistent container (the Context is the intermediary between the app and the persistent data storage (this workflow is very similar to Git).
+    //no longer need context because it is for interacting with Core Data. Since we are using Realm now, we do not need it.
+    //let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext //gets access to the AppDelegate as a singleton object. Then grabs the persistent container of the AppDelegate (the persistent container is the persistent data storage (Core Data database). Then we grab the Context of the persistent container (what the app interacts with in order to interact with the persistent container (the Context is the intermediary between the app and the persistent data storage (this workflow is very similar to Git).
     
     //let defaults = UserDefaults.standard //UserDefaults: an interface to the user's defaults database, where you store key-value pairs persistently across launches of the app. UserDefaults should only be used to save/persist small bits of data (like a volumne value or boolean or player name, should not use arrays often or heavily) (should not be used as a database). Just to get one value from the Defaults, the iPhone/Device has to load ALL of the defaults, instead of just that one value. UserDefaults is a singleton
     
@@ -61,7 +68,8 @@ class TodoListViewController: UITableViewController { //adding all of these prot
     //MARK - Tableview Datasource Methods
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return itemArray.count
+        //return itemArray.count
+        return todoItems?.count ?? 1 //itemArray was renamed to todoItems //check to see if todoItems is nil, if it is not, return the count. if it is, return 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -70,22 +78,26 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath) //reuses the cells once they go off screen
         
-        let item = itemArray[indexPath.row]
+        //let item = itemArray[indexPath.row]
+        if let item = todoItems?[indexPath.row] { //itemArray was renamed to todoItems //check to see if item is nil
         
-        cell.textLabel?.text = item.title
-        
-        //Ternary operator ==>
-        // value = condition ? valueIfTrue : valueIfFalse
-        
-        cell.accessoryType = item.done == true ? .checkmark : .none //this ternary operator does the exact same thing as the below commented out if-else statement
-        
-//        if item.done == true {
-//            cell.accessoryType = .checkmark
-//        }
-//        else {
-//            cell.accessoryType = .none
-//        }
-        
+            cell.textLabel?.text = item.title
+            
+            //Ternary operator ==>
+            // value = condition ? valueIfTrue : valueIfFalse
+            
+            cell.accessoryType = item.done == true ? .checkmark : .none //this ternary operator does the exact same thing as the below commented out if-else statement
+            
+            //        if item.done == true {
+            //            cell.accessoryType = .checkmark
+            //        }
+            //        else {
+            //            cell.accessoryType = .none
+            //        }
+        } else { //if item is nil or fails, make the todo item cell's text "No Items Added"
+            cell.textLabel?.text = "No Items Added"
+        }
+    
         return cell
     }
     
@@ -113,11 +125,30 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         //itemArray.remove(at: indexPath.row) //remove the selected item from the list (this lowers the amount of items in the list (decreases the length of the list)
         //context.delete(itemArray[indexPath.row]) //update the context with the change of the removed item (if the length of the list is decreased, then the indexPath.row throws an index out of bounds error if the last item in the array is clicked to be removed. Or, if an item at the top or in the middle of the list is clicked/selected to be removed, then that item will be removed from the list, but then the context will delete the next item (and not the item that was selected) from the persistent data storage, causing that item to be removed from the list as well when updated.)
         
+        
+        
+        //USING REALM: (this code for the Realm implementation does the same functionality as the below commented-out code (which is for the Core Data functionality)
+        //UPDATE the Item in the Realm database
+        if let item = todoItems?[indexPath.row] {
+            do {
+                try realm.write { //realm.write updates the Realm database
+                    item.done = !item.done //this line is for updating
+                    //realm.delete(item) //this line is for deleting the item from the Realm database (for when the todo item is completed)
+                }
+            } catch {
+                print("Error saving done status, \(error)")
+            }
+        }
+        
+        tableView.reloadData() //calls the cellForRowAt indexPath method to update the tableview cells UI (checkmarks)
+        
+        
         //Because the current order of the above two lines throws an error, this is the CORRECT ORDER:
         //context.delete(itemArray[indexPath.row]) //remove the item from the persistent data storage first, then remove it from the itemArray.
         //itemArray.remove(at: indexPath.row)
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done //this line does the same as the below commented out if-else statement
+        //itemArray[indexPath.row].done = !itemArray[indexPath.row].done //this line does the same as the below commented out if-else statement
+        //todoItems?[indexPath.row].done = !todoItems?[indexPath.row].done //itemArray was renamed to todoItems
         
         //when the user taps/clicks on the cell, the checkmark should be toggled either on or off (depending on whether or not the checkmark is already toggled on or off)
 //        if itemArray[indexPath.row].done == false {
@@ -128,7 +159,8 @@ class TodoListViewController: UITableViewController { //adding all of these prot
 //        }
         
         //save the current state of the context to the persistent data storage
-        saveItems()
+        //saveItems() //NO LONGER NEED THIS LINE OF CODE BECAUSE THIS IS FOR THE CORE DATA IMPLEMENTATION, NOT REALM
+        
         
         tableView.deselectRow(at: indexPath, animated: true) //makes the row white again, instead of keeping it grey (which indicates it is selected)
     }
@@ -160,19 +192,38 @@ class TodoListViewController: UITableViewController { //adding all of these prot
             
             //let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext //code in parentheses grabs the AppDelegate as an object, which we can then access the persistent container context from (this line is moved to the top so that it can be accessed globally)
             
-            let newItem = Item(context: self.context) //create new item
-            newItem.title = textField.text! //fill the item's fields
-            newItem.done = false
-            newItem.parentCategory = self.selectedCategory
             
-            self.itemArray.append(newItem) //add the item to the item list
+            //THE BELOW 5 LINES ARE USED FOR CORE DATA, NOT REALM
+            //let newItem = Item(context: self.context) //create new item
+            //newItem.title = textField.text! //fill the item's fields
+            //newItem.done = false
+            //newItem.parentCategory = self.selectedCategory
+            
+            //self.itemArray.append(newItem) //add the item to the item list
+            
             //could also do this:
             //itemArray.append(textField.text ?? "New Item") //this means that if the textField.text is nil, append "New Item"
             
             //self.defaults.set(self.itemArray, forKey: "TodoListArray") //user defaults does not accept custom objects
             
+            //FOR REALM IMPLEMENTATION:
+            if let currentCategory = self.selectedCategory {
+                //INSTEAD OF USING SELF.SAVEITEMS(), DO ALL SAVING HERE:
+                do {
+                    try self.realm.write { //CREATING/ADDING Items to Realm database
+                        let newItem = Item()
+                        newItem.title = textField.text!
+                        newItem.dateCreated = Date()
+                        currentCategory.items.append(newItem)
+                    }
+                } catch {
+                    print("Error saving new items, \(error)")
+                }
+            }
             
-            self.saveItems()
+            //self.saveItems() //FOR CORE DATA IMPLEMENTATION, NOT REALM
+            
+            self.tableView.reloadData()
             
         }
         
@@ -191,22 +242,26 @@ class TodoListViewController: UITableViewController { //adding all of these prot
     
     //MARK - Model Manipulation Methods
     
-    func saveItems() {
-        //let encoder = PropertyListEncoder() //this encodes our data into a property list using NSCoder
+    //THIS FUNCTION IS ONLY FOR CORE DATA IMPLEMENTATION, NOT REALM
+    //NOTE: lines of code that have 4 /'s (////) are commented out even for Core Data Implementation
+    //func saveItems() {
+        ////let encoder = PropertyListEncoder() //this encodes our data into a property list using NSCoder
         
-        do {
-            //let data = try encoder.encode(itemArray) //encodes data into a plist
-            //try data.write(to: dataFilePath!) //write data to data file path
-            try context.save() //transfers everything (unsaved changes) in the context to the permanent data storage
-        } catch {
-            //print("Error encoding item array, \(error)")
-            print("Error saving context \(error)")
-        }
+        //do {
+            ////let data = try encoder.encode(itemArray) //encodes data into a plist
+            ////try data.write(to: dataFilePath!) //write data to data file path
+            //try context.save() //transfers everything (unsaved changes) in the context to the permanent data storage
+        //} catch {
+            ////print("Error encoding item array, \(error)")
+            //print("Error saving context \(error)")
+        //}
         
-        tableView.reloadData() //update the tableview UI display with the latest data
-    }
+        //tableView.reloadData() //update the tableview UI display with the latest data
+    //}
     
-    func loadItems(with request : NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) { //"with" is the external parameter, "request" is the internal parameter. The "= Item.fetchRequest() sets a default value of the parameter if no parameter is passed in to the function when the function is called (as in the loadItems() call in viewDidLoad())
+    func loadItems() {
+        //the below version of the function loadItems() was for Core Data. The current version is for Realm
+    //func loadItems(with request : NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) { //"with" is the external parameter, "request" is the internal parameter. The "= Item.fetchRequest() sets a default value of the parameter if no parameter is passed in to the function when the function is called (as in the loadItems() call in viewDidLoad())
         
 //        if let data = try? Data(contentsOf: dataFilePath!) { //try? will turn the result of the Data() method into an optional. We use optional binding to unwrap that safely
 //            let decoder = PropertyListDecoder() //this decodes our data from the property list using NSCoder
@@ -220,25 +275,33 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         
         //let request : NSFetchRequest<Item> = Item.fetchRequest() //fetch the items that are in the persistent data storage //in Swift there are very few cases where you actually need to specify the datatype. In most cases, you specify the datatype because it helps you or people on your team to be able to easily see what is going on in your code. But in the majority of cases, Swift is clever enough to figure out what is the datatype just based on the value that you give it. But in this case it is a little bit different - you actually have to specify the datatype, and, most importantly, the Entity that you are trying to request (must specify the output of the request function).
         
-        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!) //return only all items associated with the selected parent category
+        //DO NOT NEED THE BELOW LINE OF CODE BECAUSE IT IS FOR CORE DATA, NOT REALM
+        //let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!) //return only all items associated with the selected parent category
         
         //combine the category predicate with the passed in predicate
         //let compoundPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, predicate])
         
         //request.predicate = compoundPredicate
         
-        //need to make sure the passed in parameter predicate is not nil, so we use optional binding:
-        if let additionalPredicate = predicate { //check to see if predicate is not nil
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
-        } else {
-            request.predicate = categoryPredicate
-        }
         
-        do {
-            itemArray = try context.fetch(request) //save the results of the persistent datastorage data fetch request inside the itemArray (so that the tableview can be populated)
-        } catch {
-            print("Error fetching data from context \(error)")
-        }
+        
+        //DO NOT NEED THE BELOW IF-ELSE STATEMENT AND DO-CATCH BLOCK BECAUSE THEY ARE FOR CORE DATA, NOT REALM
+        //need to make sure the passed in parameter predicate is not nil, so we use optional binding:
+//        if let additionalPredicate = predicate { //check to see if predicate is not nil
+//            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+//        } else {
+//            request.predicate = categoryPredicate
+//        }
+//
+//        do {
+//            itemArray = try context.fetch(request) //save the results of the persistent datastorage data fetch request inside the itemArray (so that the tableview can be populated)
+//        } catch {
+//            print("Error fetching data from context \(error)")
+//        }
+        
+        //all of the above commented out Core Data code can be replaced with this line when using Realm:
+        //itemArray = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+        todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true) //itemArray was renamed to todoItems
         
         tableView.reloadData()
     }
@@ -253,7 +316,7 @@ extension TodoListViewController: UISearchBarDelegate {
         //in this function we need to reload the table view using the text that the user has inputted
         
         //query the database and return the results
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        //let request : NSFetchRequest<Item> = Item.fetchRequest() //THIS IS NO LONGER NEEDED BECAUSE THIS IS FOR CORE DATA IMPLEMENTATION, NOT REALM
         
         //print(searchBar.text!)
         
@@ -265,7 +328,8 @@ extension TodoListViewController: UISearchBarDelegate {
         //the above two lines can be rewritten as such:
         //request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
         
-        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        //let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!) //THIS IS NO LONGER NEEDED BECAUSE THIS IS FOR CORE DATA IMPLEMENTATION, NOT REALM
         
         //sort the data that we get back from the database
         //let sortDescriptor = NSSortDescriptor(key: "title", ascending: true) //sorts by title and by alphabetical order (ascending = alphabetical order)
@@ -273,7 +337,7 @@ extension TodoListViewController: UISearchBarDelegate {
         //request.sortDescriptors = [sortDescriptor] //result.sortDescriptors expects an array of sort descriptors
         
         //the above two lines can be rewritten as such:
-        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        //request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)] //THIS IS NO LONGER NEEDED BECAUSE THIS IS FOR CORE DATA IMPLEMENTATION, NOT REALM
         
         //this do-catch block is repeated in loadItems(), so we can modify loadItems to instead take a parameter so that it fits our needs here:
 //        do {
@@ -286,9 +350,16 @@ extension TodoListViewController: UISearchBarDelegate {
         //loadItems(with: request)
         
         //because the predicate gets overwritten when loadItems is called due to the change in predicate in order to load the corresponding categories, we need to differentiate between the load categories predicate and the search predicate, which is why we added a predicate parameter to the loadItems() function (so that both predicates can be sent with the request at the same time)
-        loadItems(with: request, predicate: predicate)
+        //loadItems(with: request, predicate: predicate) //THIS IS NO LONGER NEEDED BECAUSE THIS IS FOR CORE DATA IMPLEMENTATION, NOT REALM
         
         //tableView.reloadData() //update the UI (with updated itemArray) (commented out because tableView.reloadData() already exists in loadItems()
+        
+        //filter the todolist items when search query is entered:
+        //todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "title", ascending: true) //this line replaces, in functionality, all of the above Core Data lines of code //this sorts the results by title
+        
+        todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "dateCreated", ascending: true) //this line does the same thing as the above commented out line, only this line sorts the resulting items by the date they were created, not their title
+        
+        tableView.reloadData()
     }
     
     //checks when the text of the search bar changes

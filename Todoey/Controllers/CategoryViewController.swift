@@ -7,12 +7,18 @@
 //
 
 import UIKit
-import CoreData
+//import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
 
-    var categories = [Category]()
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    let realm = try! Realm()
+    
+    
+    //var categories = [Category]()
+    //let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext //no longer need context because we are using Realm instead of Core Data
+    
+    var categories: Results<Category>? //datatype of realm.objects is of type Results, so the datatype of categories needs to be changed to type Results (which is a type from Realm) to be consistent //categories needs to be an Optional because if we, for example, forgot to load up our categories and categories was nil, it would throw an error
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,16 +31,19 @@ class CategoryViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
-        return categories.count
+        return categories?.count ?? 1 //checks to see if categories is nil. if it is not nil, then return categories.count. if it is nil, then just return 1 (so our table view will have just 1 row) // the ?? operator is called the Nil Coalescing Operator
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        let category = categories[indexPath.row]
+        //let category = categories[indexPath.row]
         
-        cell.textLabel?.text = category.name
+        //cell.textLabel?.text = category.name
+        
+        //the above two lines can be combined into this one line:
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet" //if the categories variable is not nil, then set the cell text to the corresponding category name. If the categories varibale is nil, then set the text to "No Categories Added Yet"
         
         return cell
         
@@ -53,7 +62,7 @@ class CategoryViewController: UITableViewController {
         
         if let indexPath = tableView.indexPathForSelectedRow { //checks to see if the indexPath is nil -> checks to see if a cell is selected
             
-            destinationVC.selectedCategory = categories[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
         
         
@@ -62,10 +71,14 @@ class CategoryViewController: UITableViewController {
     
     //MARK: - Data Manipulation Methods
     
-    func saveCategories() {
+    func save(category: Category) { //func saveCategories() {
         
         do {
-            try context.save()
+            //try context.save() //since we are no longer using the context (no longer using Core Data), we do not need this line)
+            //instead try to write to the Realm database:
+            try realm.write {
+                realm.add(category)
+            }
         } catch {
             print("Error saving category \(error)")
         }
@@ -76,14 +89,17 @@ class CategoryViewController: UITableViewController {
     
     func loadCategories() {
         
-        let request : NSFetchRequest<Category> = Category.fetchRequest()
+        //all of the below commented out code (used for Core Data) can be replaced, in functionality, with the below line of code (used for Realm)
+        categories = realm.objects(Category.self) //this pulls out all of the Items inside our Realm that are of Category objects
         
-        do {
-            categories = try context.fetch(request)
-        } catch {
-            print("Error loading categories \(error)")
-        }
-        
+//        let request : NSFetchRequest<Category> = Category.fetchRequest()
+//
+//        do {
+//            categories = try context.fetch(request)
+//        } catch {
+//            print("Error loading categories \(error)")
+//        }
+//
         tableView.reloadData()
     }
     
@@ -97,12 +113,16 @@ class CategoryViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             
-            let newCategory = Category(context: self.context)
+            //let newCategory = Category(context: self.context)
+            
+            //we not longer need to use the context because we are using realm and can use the Category() data model
+            let newCategory = Category()
             newCategory.name = textField.text!
             
-            self.categories.append(newCategory)
+            //self.categories.append(newCategory) //because categories is of datatype Results, and because Results automatically updates and monitors for changes, we do not need to append the newCategory to the datatype
             
-            self.saveCategories()
+            //self.saveCategories()
+            self.save(category: newCategory)
         }
         
         alert.addAction(action)
