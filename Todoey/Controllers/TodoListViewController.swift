@@ -9,8 +9,9 @@
 import UIKit
 //import CoreData
 import RealmSwift
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController { //adding all of these protocols/delegates can get crowded and confusing, so you can create a new class that acts as an extension to the TodoListViewController class below this class, and have that extension act as the delegate for the specific need (ie search bar or image picker, etc.) (can split up the functionality of the view controller so its more organized/modularized)
+class TodoListViewController: SwipeTableViewController { //adding all of these protocols/delegates can get crowded and confusing, so you can create a new class that acts as an extension to the TodoListViewController class below this class, and have that extension act as the delegate for the specific need (ie search bar or image picker, etc.) (can split up the functionality of the view controller so its more organized/modularized)
     
     //var itemArray = ["Find Mike", "Buy Eggos", "Destroy Demogorgon"]
     
@@ -19,6 +20,10 @@ class TodoListViewController: UITableViewController { //adding all of these prot
     var todoItems: Results<Item>? //having itemArray as this type of variable is for Realm (itemArray was renamed to todoItems)
     
     let realm = try! Realm()
+    
+    
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     
     var selectedCategory : Category? {
         didSet{ //everything between these curly braces is going to happen as soon as selectedCategory gets set with a value
@@ -56,14 +61,75 @@ class TodoListViewController: UITableViewController { //adding all of these prot
 //            itemArray = items
 //        }
         
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))//.first?.appendingPathComponent("Items.plist")) //get a path for where the data is being stored for our current app
+        //print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))//.first?.appendingPathComponent("Items.plist")) //get a path for where the data is being stored for our current app
         
         //searchBar.delegate = self //you can do this in code, or you can right click and drag on the searchbar in the main.storyboard and drag it to the yellow circle icon (which represents the view controller) and then click on "delegate", which does the same thing as this line of code (which is what i did) (sets the delegate of the searchbar to the view controller
         
         //loadItems() //update the UI by loading the data of the itemArray
         
+        //get rid of the cell separators:
+        tableView.separatorStyle = .none
+        
+        //this if-else statement is moved to the viewWillAppear method because of the below guard statement comment (the comment details the reason)
+//        if let colourHex = selectedCategory?.colour { //using optional binding
+//
+//            guard let navBar = navigationController?.navigationBar else  { //the todoListViewController might not be in the navigation stack (and thus have the navigation controller updated) by the time the viewDidLoad method is called, so we have to check if the navigationController is nil (
+//                fatalError("Navigation controller does not exist.")
+//            }
+//            navigationController?.navigationBar.barTintColor = UIColor(hexString: colourhex)
+//        }
+        
     }
 
+    //this function is called right after viewDidLoad and right before the view shows up on screen
+    override func viewWillAppear(_ animated: Bool) {
+        
+        //change the title of the navigation bar for todoItemsViewController to the selected Category:
+        title = selectedCategory?.name
+        
+        //if let colourHex = selectedCategory?.colour { //using optional binding
+        guard let colourHex = selectedCategory?.colour else {fatalError()} //get the color of the selected category (corresponding to the todoItems)
+        
+        updateNavBar(withHexCode: colourHex)
+    }
+    
+    //this function is called right before the view is about to be removed from the view hierarchy/navigation stack.
+    //(useful for managing things that should happen when the back button is pressed)
+    override func viewWillDisappear(_ animated: Bool) {
+        //guard let originalColour = UIColor(hexString: "1D9BF6") else {fatalError()}
+//        navigationController?.navigationBar.barTintColor = originalColour
+//        navigationController?.navigationBar.tintColor = FlatWhite()
+//        navigationController?.navigationBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: FlatWhite()]
+        
+        //calling this function we made does the same as all of the lines of code above (as well as some of the code we had in viewWillAppear (we cut and pasted the necessary code from viewWillAppear to updateNavBar in order to get rid of the repetitive code between viewWillAppear and viewWillDisappear)):
+        updateNavBar(withHexCode: "1D9BF6")
+    }
+    
+    //MARK: - Nav Bar Setup Methods
+    
+    func updateNavBar(withHexCode colourHexCode: String) {
+        
+        //change the color of the navigation bar
+        guard let navBar = navigationController?.navigationBar else  { //the todoListViewController might not be in the navigation stack (and thus have the navigation controller updated) by the time the viewDidLoad method is called, so we have to check if the navigationController is nil (
+            fatalError("Navigation controller does not exist.")
+        }
+        
+        //if let navBarColour = UIColor(hexString: colourHex) {
+        guard let navBarColour = UIColor(hexString: colourHexCode) else {fatalError()}
+        
+        //navBar.barTintColor = UIColor(hexString: colourHex) //UIColor is optional but barTintColor() takes in an optional
+        navBar.barTintColor = navBarColour
+        
+        //change the contrast color of the navigation bar buttons
+        //navBar.tintColor = ContrastColorOf(UIColor(hexString: colourHex), returnFlat: true) //UIColor is optional, but ContrastColorOf() does NOT take in an optional. thus, we need to do optional binding
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        navBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor : ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        //change the color of the search bar's background
+        //searchBar.barTintColor = UIColor(hexString: colourHex)
+        searchBar.barTintColor = navBarColour
+    }
 
     //MARK - Tableview Datasource Methods
     
@@ -76,16 +142,27 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         
         //let cell = UITableViewCell(style: .default, reuseIdentifier: "ToDoItemCell") //once the cell goes off the screen, it gets deallocated and destroyed
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath) //reuses the cells once they go off screen
+        //trigger the code in the super class to create a SwipeTableViewCell
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        
+        //THE BELOW LINE OF CODE IS NO LONGER NEEDED BECAUSE IT WAS USED BEFORE THE SwipeTableViewController IMPLEMENTATION
+        //let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath) //reuses the cells once they go off screen
         
         //let item = itemArray[indexPath.row]
+        
         if let item = todoItems?[indexPath.row] { //itemArray was renamed to todoItems //check to see if item is nil
         
             cell.textLabel?.text = item.title
             
+            //set the cell background color as a gradient (darken the subsequent cells based on the number of cells in existence)
+            if let colour = UIColor(hexString: selectedCategory!.colour)?.darken(byPercentage: (CGFloat(indexPath.row) / CGFloat(todoItems!.count))) { //we know that todoItems is not nil because this line is only going to be reached if todoItems is not nil (based on the if-statement check above). Thus, we can force-unwrap todoItems and selectedCategory (because todoItems comes from selectedCategory (in loadItems()) with !. //we use ? after the UIColor in order to check to see if the UIColor is nil (called optional chaining). If it is not, then continue. if it is, then skip this block.
+                 cell.backgroundColor = colour
+                cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+            }
+            
             //Ternary operator ==>
             // value = condition ? valueIfTrue : valueIfFalse
-            
+        
             cell.accessoryType = item.done == true ? .checkmark : .none //this ternary operator does the exact same thing as the below commented out if-else statement
             
             //        if item.done == true {
@@ -99,6 +176,7 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         }
     
         return cell
+        
     }
     
     //MARK - TableView Delegate Methods
@@ -304,6 +382,19 @@ class TodoListViewController: UITableViewController { //adding all of these prot
         todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true) //itemArray was renamed to todoItems
         
         tableView.reloadData()
+    }
+    
+    override func updateModel(at indexPath: IndexPath) {
+        if let item = todoItems?[indexPath.row] {
+            do {
+                //update the realm
+                try realm.write {
+                    realm.delete(item)
+                }
+            } catch {
+                print("Error deleting Item, \(error)")
+            }
+        }
     }
     
     

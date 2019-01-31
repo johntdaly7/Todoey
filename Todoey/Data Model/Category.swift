@@ -11,6 +11,7 @@ import RealmSwift
 
 class Category: Object {
     @objc dynamic var name: String = ""
+    @objc dynamic var colour : String = ""
     let items = List<Item>() //list of items to represent the relationship between categories and items -> each category has a one to may relationship with a list of items //class List comes from a Realm framework
     
     //different ways of declaring an array:
